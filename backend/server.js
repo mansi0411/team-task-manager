@@ -1,11 +1,6 @@
-/**
- * Team Task Manager - Main server entry point
- * Sets up Express, middleware, routes, and database connection
- */
-
 const path = require("path");
 
-// Load .env from the backend folder (not whatever folder you run the command from)
+// Load .env from the backend folder
 require("dotenv").config({
   path: path.join(__dirname, ".env"),
 });
@@ -24,17 +19,27 @@ const app = express();
 
 // ----- Middleware -----
 
-// CORS: allows your frontend (different port/domain) to call this API
-app.use(cors());
+// CORS configuration
+app.use(
+  cors({
+    origin: [
+      "http://localhost:5173",
+      "https://team-task-manager-liard-alpha.vercel.app",
+    ],
+    credentials: true,
+    methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization"],
+  })
+);
 
-// Parse incoming JSON request bodies (req.body)
+// Handle preflight requests
+app.options("*", cors());
+
+// Parse incoming JSON request bodies
 app.use(express.json());
 
 // ----- Routes -----
 
-/**
- * Health check route - visit http://localhost:5000/ in browser or Postman
- */
 app.get("/", (req, res) => {
   res.status(200).json({
     success: true,
@@ -43,10 +48,10 @@ app.get("/", (req, res) => {
   });
 });
 
-// Authentication routes: /api/auth/register, /api/auth/login
+// Authentication routes
 app.use("/api/auth", authRoutes);
 
-// Protected test routes: /api/test/profile, /api/test/admin
+// Protected test routes
 app.use("/api/test", testRoutes);
 
 // Project management routes
@@ -60,24 +65,18 @@ app.use("/api/dashboard", dashboardRoutes);
 
 // ----- Error handling -----
 
-/**
- * 404 handler - runs when no route matches the request URL
- * Must be AFTER all route definitions
- */
-app.use((req, res, next) => {
+app.use((req, res) => {
   res.status(404).json({
     success: false,
     message: `Route not found: ${req.method} ${req.originalUrl}`,
   });
 });
 
-/**
- * Global error handler - catches errors passed via next(error)
- */
 app.use((err, req, res, next) => {
   console.error("Server error:", err.stack);
 
   const statusCode = err.statusCode || 500;
+
   res.status(statusCode).json({
     success: false,
     message: err.message || "Internal Server Error",
@@ -88,9 +87,6 @@ app.use((err, req, res, next) => {
 
 const PORT = process.env.PORT || 5000;
 
-/**
- * Start the server only after MongoDB is connected
- */
 const startServer = async () => {
   await connectDB();
 
